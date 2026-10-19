@@ -1,0 +1,513 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Text to Voice</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700&family=JetBrains+Mono:wght@400;500&display=swap">
+<style>
+  :root {
+    --bg: #0d0f14;
+    --bg2: #13161e;
+    --surface: #181c26;
+    --surface2: #1e2230;
+    --border: #272b38;
+    --border2: #313747;
+    --fg: #eef0f6;
+    --fg2: #9ba3b8;
+    --fg3: #5d6478;
+    --accent: #6c63ff;
+    --accent2: #8b84ff;
+    --accent-glow: rgba(108,99,255,0.18);
+    --accent-dim: rgba(108,99,255,0.1);
+    --green: #22c55e;
+    --danger: #f87171;
+    --radius: 14px;
+    --radius-sm: 9px;
+    --font: 'Inter', system-ui, sans-serif;
+    --font-head: 'Space Grotesk', sans-serif;
+    --font-mono: 'JetBrains Mono', monospace;
+  }
+  [data-theme="light"] {
+    --bg: #f0f2f8;
+    --bg2: #e8eaf4;
+    --surface: #ffffff;
+    --surface2: #f5f6fc;
+    --border: #dde0ee;
+    --border2: #c8cce0;
+    --fg: #1a1d2e;
+    --fg2: #4a5068;
+    --fg3: #8890aa;
+    --accent: #5b52f0;
+    --accent2: #7a74f5;
+    --accent-glow: rgba(91,82,240,0.12);
+    --accent-dim: rgba(91,82,240,0.07);
+    --green: #16a34a;
+    --danger: #dc2626;
+  }
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--bg);
+    color: var(--fg);
+    font-family: var(--font);
+    font-size: 14px;
+    line-height: 1.6;
+    min-height: 100vh;
+    padding: 40px 16px 60px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    background-image: radial-gradient(ellipse 80% 50% at 50% -10%, rgba(108,99,255,0.12), transparent);
+  }
+
+  .wrap { width: 100%; max-width: 680px; display: flex; flex-direction: column; gap: 20px; }
+
+  /* ── Header ── */
+  .header {
+    display: flex; align-items: flex-start; justify-content: space-between; gap: 16px;
+    padding-bottom: 4px;
+  }
+  .header-icon {
+    width: 44px; height: 44px; border-radius: 12px;
+    background: linear-gradient(135deg, var(--accent), #a78bfa);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 20px; flex-shrink: 0;
+    box-shadow: 0 0 20px var(--accent-glow);
+  }
+  .header-text { flex: 1; min-width: 0; }
+  .header-text h1 {
+    font-family: var(--font-head); font-size: 26px; font-weight: 700;
+    letter-spacing: -0.5px; color: var(--fg);
+    background: linear-gradient(90deg, var(--fg), var(--accent2));
+    -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+  .header-text p { font-size: 12.5px; color: var(--fg3); margin-top: 2px; }
+  .header-text p span { color: var(--accent2); font-weight: 500; }
+  .header-actions { display: flex; gap: 8px; align-items: center; flex-shrink: 0; }
+  .icon-btn {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: var(--radius-sm); padding: 8px 10px;
+    cursor: pointer; color: var(--fg2); font-size: 15px; line-height: 1;
+    transition: all 0.15s;
+  }
+  .icon-btn:hover { border-color: var(--accent); background: var(--accent-dim); }
+
+  /* ── Card ── */
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 24px;
+    display: flex; flex-direction: column; gap: 20px;
+    box-shadow: 0 4px 24px rgba(0,0,0,0.2);
+  }
+
+  .field-label {
+    font-size: 11px; font-weight: 600; letter-spacing: 0.08em;
+    text-transform: uppercase; color: var(--fg3); display: flex;
+    align-items: center; justify-content: space-between; margin-bottom: 8px;
+  }
+
+  textarea {
+    width: 100%; min-height: 130px;
+    background: var(--bg2); border: 1px solid var(--border);
+    border-radius: var(--radius-sm); padding: 13px 14px;
+    font-family: var(--font); font-size: 14px; color: var(--fg);
+    resize: vertical; outline: none; line-height: 1.65;
+    transition: border-color 0.2s, box-shadow 0.2s;
+  }
+  textarea::placeholder { color: var(--fg3); }
+  textarea:focus {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px var(--accent-dim);
+  }
+  .char-count { font-size: 11.5px; color: var(--fg3); font-variant-numeric: tabular-nums; }
+  .char-count.warn { color: var(--danger); }
+
+  /* ── Voice grid ── */
+  .voice-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(110px, 1fr));
+    gap: 8px;
+  }
+  .voice-btn {
+    background: var(--bg2); border: 1px solid var(--border);
+    border-radius: var(--radius-sm); padding: 10px 11px;
+    cursor: pointer; text-align: left; transition: all 0.15s;
+    display: flex; flex-direction: column; gap: 2px;
+    position: relative; overflow: hidden;
+  }
+  .voice-btn::before {
+    content: ''; position: absolute; inset: 0;
+    background: linear-gradient(135deg, var(--accent), transparent);
+    opacity: 0; transition: opacity 0.2s;
+  }
+  .voice-btn:hover { border-color: var(--border2); }
+  .voice-btn.active {
+    border-color: var(--accent);
+    background: var(--accent-dim);
+    box-shadow: 0 0 0 1px var(--accent), 0 0 12px var(--accent-glow);
+  }
+  .voice-btn.active::before { opacity: 0.04; }
+  .voice-emoji { font-size: 16px; margin-bottom: 2px; }
+  .voice-name { font-size: 12.5px; font-weight: 600; color: var(--fg); }
+  .voice-desc { font-size: 10.5px; color: var(--fg3); }
+
+
+  /* ── Generate button ── */
+  .generate-btn {
+    background: linear-gradient(135deg, var(--accent), #8b5cf6);
+    color: #fff; border: none; border-radius: var(--radius-sm);
+    padding: 14px 20px; font-family: var(--font); font-size: 15px;
+    font-weight: 600; cursor: pointer; width: 100%;
+    display: flex; align-items: center; justify-content: center; gap: 9px;
+    transition: opacity 0.15s, transform 0.1s;
+    box-shadow: 0 4px 20px rgba(108,99,255,0.35);
+    letter-spacing: 0.01em;
+  }
+  .generate-btn:hover:not(:disabled) { opacity: 0.9; transform: translateY(-1px); }
+  .generate-btn:active:not(:disabled) { transform: translateY(0); }
+  .generate-btn:disabled { opacity: 0.45; cursor: not-allowed; }
+
+  .spinner {
+    width: 16px; height: 16px; border: 2px solid rgba(255,255,255,0.3);
+    border-top-color: #fff; border-radius: 50%;
+    animation: spin 0.7s linear infinite; flex-shrink: 0;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* ── Error ── */
+  .error-box {
+    background: rgba(248,113,113,0.08); border: 1px solid rgba(248,113,113,0.3);
+    border-radius: var(--radius-sm); padding: 12px 14px; font-size: 13px;
+    color: var(--danger); display: flex; gap: 9px; align-items: flex-start;
+    animation: fadeIn 0.2s ease;
+  }
+
+  /* ── Player ── */
+  .player {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: var(--radius); padding: 20px;
+    display: flex; flex-direction: column; gap: 16px;
+    box-shadow: 0 4px 24px rgba(0,0,0,0.2);
+    animation: fadeIn 0.25s ease;
+  }
+  @keyframes fadeIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+
+  .player-top { display: flex; align-items: center; gap: 14px; }
+  .play-btn {
+    width: 48px; height: 48px; border-radius: 50%;
+    background: linear-gradient(135deg, var(--accent), #8b5cf6);
+    color: #fff; border: none; cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0; font-size: 17px;
+    box-shadow: 0 0 16px var(--accent-glow);
+    transition: transform 0.15s, box-shadow 0.15s;
+  }
+  .play-btn:hover { transform: scale(1.07); box-shadow: 0 0 24px var(--accent-glow); }
+
+  .player-meta { flex: 1; min-width: 0; }
+  .player-title {
+    font-size: 14px; font-weight: 600; color: var(--fg);
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+  .player-sub { font-size: 11.5px; color: var(--fg3); margin-top: 2px; display: flex; align-items: center; gap: 5px; }
+  .dot { width: 5px; height: 5px; border-radius: 50%; background: var(--green); flex-shrink: 0; }
+
+  .dl-btn {
+    display: flex; align-items: center; gap: 6px;
+    background: var(--surface2); border: 1px solid var(--border);
+    border-radius: var(--radius-sm); padding: 8px 13px;
+    font-family: var(--font); font-size: 12.5px; font-weight: 500;
+    color: var(--fg2); cursor: pointer; transition: all 0.15s; text-decoration: none;
+  }
+  .dl-btn:hover { border-color: var(--accent); color: var(--accent); background: var(--accent-dim); }
+
+  /* ── Waveform ── */
+  .waveform {
+    display: flex; align-items: center; gap: 2.5px; height: 40px;
+    background: var(--bg2); border-radius: var(--radius-sm);
+    padding: 6px 10px; overflow: hidden;
+  }
+  .bar {
+    flex: 1; border-radius: 2px;
+    background: var(--border2); min-width: 2px; max-width: 7px;
+    transform-origin: center;
+  }
+  .bar.active { background: var(--accent); }
+  @keyframes bounce {
+    0%, 100% { transform: scaleY(0.25); }
+    50% { transform: scaleY(1); }
+  }
+  .playing .bar { animation: bounce var(--d, 0.6s) ease-in-out infinite; }
+
+  /* ── Progress ── */
+  .progress-wrap { display: flex; align-items: center; gap: 10px; }
+  .progress-bar {
+    flex: 1; height: 4px; background: var(--border2);
+    border-radius: 2px; cursor: pointer; position: relative;
+  }
+  .progress-fill {
+    height: 100%; background: linear-gradient(90deg, var(--accent), #a78bfa);
+    border-radius: 2px; width: 0%; transition: width 0.1s linear;
+  }
+  .time { font-family: var(--font-mono); font-size: 11px; color: var(--fg3); white-space: nowrap; font-variant-numeric: tabular-nums; }
+
+  /* ── Divider ── */
+  .divider { height: 1px; background: var(--border); }
+
+  /* ── Footer ── */
+  .footer { text-align: center; font-size: 11.5px; color: var(--fg3); padding-top: 4px; }
+
+  @media (max-width: 480px) {
+    .voice-grid { grid-template-columns: repeat(auto-fill, minmax(90px, 1fr)); }
+    .header-text h1 { font-size: 21px; }
+    .card { padding: 18px; }
+  }
+  @media (prefers-reduced-motion: reduce) { .bar, .spinner { animation: none !important; } }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <!-- Header -->
+  <div class="header">
+    <div style="display:flex;gap:13px;align-items:center">
+      <div class="header-icon">🎙</div>
+      <div class="header-text">
+        <h1>Text to Voice</h1>
+        <p>Developed by <span>Shayan Khan</span></p>
+      </div>
+    </div>
+    <div class="header-actions">
+      <button class="icon-btn" id="themeBtn" title="Toggle theme">🌙</button>
+    </div>
+  </div>
+
+  <!-- Main card -->
+  <div class="card">
+
+    <!-- Text input -->
+    <div>
+      <div class="field-label">
+        <span>Your Text</span>
+        <span class="char-count" id="charCount">0 / 3000</span>
+      </div>
+      <textarea id="textInput" placeholder="Hello! All the credit goes to the creator. Type here to test a voice…"></textarea>
+    </div>
+
+    <div class="divider"></div>
+
+    <!-- Voice selector -->
+    <div>
+      <div class="field-label"><span>Voice</span></div>
+      <div class="voice-grid" id="voiceGrid"></div>
+    </div>
+
+    <!-- Generate -->
+    <button class="generate-btn" id="generateBtn">
+      <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+      Generate Speech
+    </button>
+  </div>
+
+  <!-- Error -->
+  <div id="errorBox" style="display:none" class="error-box">
+    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+    <span id="errorMsg"></span>
+  </div>
+
+  <!-- Player -->
+  <div class="player" id="player" style="display:none">
+    <div class="player-top">
+      <button class="play-btn" id="playBtn">▶</button>
+      <div class="player-meta">
+        <div class="player-title" id="playerTitle">Speech</div>
+        <div class="player-sub"><div class="dot"></div><span id="playerSub">Ready</span></div>
+      </div>
+      <a class="dl-btn" id="dlBtn" href="#" download="speech.mp3">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+        Save MP3
+      </a>
+    </div>
+    <div class="waveform" id="waveform"></div>
+    <div class="progress-wrap">
+      <span class="time" id="timeCur">0:00</span>
+      <div class="progress-bar" id="progressBar"><div class="progress-fill" id="progressFill"></div></div>
+      <span class="time" id="timeTot">0:00</span>
+    </div>
+  </div>
+
+  <div class="footer">Developed by Shayan Khan &nbsp;·&nbsp; Powered by ttsmp3.com</div>
+
+</div>
+
+<script>
+  const VOICES = [
+    { id: 'coral',   name: 'Coral',   desc: 'Warm female',   e: '🌸' },
+    { id: 'alloy',   name: 'Alloy',   desc: 'Neutral',       e: '⚙️' },
+    { id: 'echo',    name: 'Echo',    desc: 'Clear male',    e: '🔊' },
+    { id: 'fable',   name: 'Fable',   desc: 'Expressive',    e: '📖' },
+    { id: 'onyx',    name: 'Onyx',    desc: 'Deep male',     e: '🪨' },
+    { id: 'nova',    name: 'Nova',    desc: 'Bright female', e: '✨' },
+    { id: 'shimmer', name: 'Shimmer', desc: 'Soft female',   e: '💫' },
+    { id: 'ash',     name: 'Ash',     desc: 'Calm',          e: '🍃' },
+    { id: 'sage',    name: 'Sage',    desc: 'Smooth',        e: '🌿' },
+    { id: 'ballad',  name: 'Ballad',  desc: 'Musical',       e: '🎵' },
+    { id: 'verse',   name: 'Verse',   desc: 'Precise',       e: '📝' },
+  ];
+
+  let selectedVoice = 'coral';
+  let audio = null, blobUrl = null, animFrame = null;
+
+  const grid = document.getElementById('voiceGrid');
+  VOICES.forEach(v => {
+    const btn = document.createElement('button');
+    btn.className = 'voice-btn' + (v.id === selectedVoice ? ' active' : '');
+    btn.innerHTML = `<span class="voice-emoji">${v.e}</span><span class="voice-name">${v.name}</span><span class="voice-desc">${v.desc}</span>`;
+    btn.addEventListener('click', () => {
+      selectedVoice = v.id;
+      grid.querySelectorAll('.voice-btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+    });
+    grid.appendChild(btn);
+  });
+
+  const ta = document.getElementById('textInput');
+  const cc = document.getElementById('charCount');
+  function updateCount() {
+    const n = ta.value.length;
+    cc.textContent = n + ' / 3000';
+    cc.classList.toggle('warn', n > 2800);
+  }
+  ta.addEventListener('input', updateCount);
+  updateCount();
+
+
+  const wf = document.getElementById('waveform');
+  const bars = [];
+  for (let i = 0; i < 48; i++) {
+    const b = document.createElement('div');
+    b.className = 'bar';
+    b.style.setProperty('--d', (0.35 + Math.random() * 0.75).toFixed(2) + 's');
+    b.style.height = (15 + Math.random() * 70) + '%';
+    b.style.animationDelay = (Math.random() * -1.2).toFixed(2) + 's';
+    wf.appendChild(b); bars.push(b);
+  }
+
+  function fmtTime(s) {
+    s = Math.floor(s || 0);
+    return Math.floor(s/60) + ':' + String(s%60).padStart(2,'0');
+  }
+
+  function updateProgress() {
+    if (!audio) return;
+    const pct = audio.duration ? (audio.currentTime / audio.duration * 100) : 0;
+    document.getElementById('progressFill').style.width = pct + '%';
+    document.getElementById('timeCur').textContent = fmtTime(audio.currentTime);
+    const idx = Math.floor(pct / 100 * bars.length);
+    bars.forEach((b, i) => b.classList.toggle('active', i < idx));
+    if (!audio.paused) animFrame = requestAnimationFrame(updateProgress);
+  }
+
+  document.getElementById('progressBar').addEventListener('click', e => {
+    if (!audio || !audio.duration) return;
+    const rect = e.currentTarget.getBoundingClientRect();
+    audio.currentTime = ((e.clientX - rect.left) / rect.width) * audio.duration;
+    updateProgress();
+  });
+
+  const playBtn = document.getElementById('playBtn');
+  playBtn.addEventListener('click', () => { if (!audio) return; audio.paused ? audio.play() : audio.pause(); });
+
+  function setupAudio(url, label) {
+    if (blobUrl) URL.revokeObjectURL(blobUrl);
+    if (audio) { audio.pause(); cancelAnimationFrame(animFrame); }
+    blobUrl = url; audio = new Audio(url);
+    audio.addEventListener('play', () => { playBtn.textContent = '⏸'; wf.classList.add('playing'); updateProgress(); });
+    audio.addEventListener('pause', () => { playBtn.textContent = '▶'; wf.classList.remove('playing'); });
+    audio.addEventListener('ended', () => {
+      playBtn.textContent = '▶'; wf.classList.remove('playing');
+      document.getElementById('progressFill').style.width = '0%';
+      document.getElementById('timeCur').textContent = '0:00';
+      bars.forEach(b => b.classList.remove('active'));
+    });
+    audio.addEventListener('loadedmetadata', () => { document.getElementById('timeTot').textContent = fmtTime(audio.duration); });
+    playBtn.textContent = '▶'; wf.classList.remove('playing');
+    document.getElementById('playerTitle').textContent = label;
+    document.getElementById('playerSub').textContent = VOICES.find(v=>v.id===selectedVoice)?.name + ' voice';
+    document.getElementById('progressFill').style.width = '0%';
+    document.getElementById('timeCur').textContent = '0:00';
+    bars.forEach(b => b.classList.remove('active'));
+  }
+
+  document.getElementById('generateBtn').addEventListener('click', async () => {
+    const text = ta.value.trim();
+    const errorBox = document.getElementById('errorBox');
+    const errorMsg = document.getElementById('errorMsg');
+    const btn = document.getElementById('generateBtn');
+    const player = document.getElementById('player');
+
+    errorBox.style.display = 'none';
+
+    if (!text) { errorMsg.textContent = 'Please enter some text to convert.'; errorBox.style.display = 'flex'; return; }
+    if (text.length > 3000) { errorMsg.textContent = 'Text too long — keep it under 3000 characters.'; errorBox.style.display = 'flex'; return; }
+
+    btn.disabled = true;
+    btn.innerHTML = '<div class="spinner"></div> Generating…';
+
+    try {
+      const res = await fetch('/api/tts', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ text, voice: selectedVoice })
+      });
+      if (!res.ok) {
+        let msg = 'Server error ' + res.status;
+        try { const j = await res.json(); if (j.error) msg = j.error; } catch(_) {}
+        throw new Error(msg);
+      }
+      const ct = res.headers.get('Content-Type') || '';
+      if (ct.includes('application/json')) { const j = await res.json(); throw new Error(j.error || 'API error.'); }
+
+      const blob = await res.blob();
+      const objUrl = URL.createObjectURL(blob);
+      setupAudio(objUrl, text.length > 42 ? text.slice(0,42) + '…' : text);
+
+      const dlBtn = document.getElementById('dlBtn');
+      dlBtn.href = objUrl;
+      dlBtn.download = 'speech-' + selectedVoice + '.mp3';
+
+      player.style.display = 'flex';
+      audio.play();
+
+    } catch(err) {
+      errorMsg.textContent = err.message || 'Something went wrong. Try again.';
+      errorBox.style.display = 'flex';
+    } finally {
+      btn.disabled = false;
+      btn.innerHTML = '<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><polygon points="5 3 19 12 5 21 5 3"/></svg> Generate Speech';
+    }
+  });
+
+  // Theme toggle
+  const themeBtn = document.getElementById('themeBtn');
+  let currentTheme = null;
+  try { currentTheme = localStorage.getItem('tts-theme'); } catch(_) {}
+  function applyTheme(t) {
+    if (t === 'light') { document.documentElement.setAttribute('data-theme','light'); themeBtn.textContent = '🌙'; }
+    else { document.documentElement.setAttribute('data-theme','dark'); themeBtn.textContent = '☀️'; }
+  }
+  applyTheme(currentTheme || 'dark');
+  themeBtn.addEventListener('click', () => {
+    const isLight = document.documentElement.getAttribute('data-theme') === 'light';
+    currentTheme = isLight ? 'dark' : 'light';
+    applyTheme(currentTheme);
+    try { localStorage.setItem('tts-theme', currentTheme); } catch(_) {}
+  });
+</script>
+</body>
+</html>
